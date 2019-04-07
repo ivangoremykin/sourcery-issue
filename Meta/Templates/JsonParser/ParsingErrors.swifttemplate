@@ -1,0 +1,65 @@
+<%
+
+struct ErrorAccumulator: Error
+{
+    var errors: [Error] = []
+
+    var localizedDescription: String
+    {
+        return  "Can't generate parsing functions"
+    }
+}
+
+struct NotAllVariablesAreJsonAutoSerializableError: Error
+{
+    let failedItems: [(Type, [Variable])]
+
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+struct NotAllVariablesAreCorrectlyAnnotatedError: Error
+{
+    let failedItems: [(Type, [(Variable, [String])])]
+
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+struct NotVariablesIsCorrectlyAnnotatedError: Error
+{
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+struct NotVariableHasAllNeededAnnotationKeysError: Error
+{
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+struct NotVariableEveryAnnotationKeyIsSpecifiedOnceError: Error
+{
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+struct NotVariableEveryAnnotationKeyHasCorrectValueError: Error
+{
+    var suggestion: String
+    {
+        return ""
+    }
+}
+
+-%>

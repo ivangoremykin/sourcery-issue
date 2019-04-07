@@ -1,0 +1,81 @@
+<%- include("../Common/Common") -%>
+<%- include("ParsingCommon") -%>
+<%- include("ParsingErrors") -%>
+
+<%
+
+func checkAnnotationCorrectness() -> Error?
+{
+    var errorAccumulator = ErrorAccumulator()
+
+    for type in types.implementing["JsonAutoSerializable"]
+    {
+        if let error = checkAllVariablesAreJsonAutoSerializable(type)
+        {
+            errorAccumulator.errors.append(error)
+        }
+
+        if let error = checkAllVariablesAreCorrectlyAnnotated(type)
+        {
+            errorAccumulator.errors.append(error)
+        }
+    }
+
+    return errorAccumulator.errors.isEmpty ? nil : errorAccumulator
+}
+
+-%>
+
+<% // <#All variables are JsonAutoSerializable#>
+
+func checkAllVariablesAreJsonAutoSerializable(_ type: Type) -> NotAllVariablesAreJsonAutoSerializableError?
+{
+    return nil
+}
+
+let rawValueParserTypeNames: [String] = [
+    "String",
+    "Bool",
+    "Double",
+    "Float",
+    "Int",
+    "UInt",
+    "Url"
+]
+
+func isJsonAutoSerializable(variable: Variable) -> Bool
+{
+    // Skip All Generic except arrays, but not arrays of arrays
+    return variable.type?.implements["JsonAutoSerializable"] != nil
+                || rawValueParserTypeNames.contains(getRawTypeName1(variable))
+                || variable.annotations["parser"] != nil
+}
+
+-%>
+
+<%
+
+func checkAllVariablesAreCorrectlyAnnotated(_ type: Type) -> NotAllVariablesAreCorrectlyAnnotatedError?
+{
+    // ignore computedVariables
+    return nil
+}
+
+func checkVariablesIsCorrectlyAnnotated() -> NotVariablesIsCorrectlyAnnotatedError?
+{
+    return nil
+}
+
+func checkVariableHasAllNeededAnnotationKeys() -> NotVariableHasAllNeededAnnotationKeysError?
+{
+    // all needed keys!
+    // all keys specified once
+    return nil
+}
+
+func checkVariableEveryAnnotationKeyHasCorrectValue() -> NotVariableEveryAnnotationKeyHasCorrectValueError?
+{
+    return nil
+}
+
+-%>

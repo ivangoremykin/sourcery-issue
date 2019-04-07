@@ -1,0 +1,242 @@
+<%- include("../Common/Common") -%>
+<%- include("ParsingCommon") -%>
+
+<% // <#Parser#>
+
+func getRawTypeParser(_ variable: Variable) -> String
+{
+    if let rawTypeParser = variable.annotations["parser"] as? String
+    {
+        return rawTypeParser
+    }
+    else
+    {
+        var rawTypeName = getRawTypeName(variable)
+        if rawTypeName == "URL"
+        {
+            rawTypeName = "Url"
+        }
+
+        return "parse\(rawTypeName)"
+    }
+}
+
+func createParserComposition(_ variable: Variable) -> String
+{
+    let rawTypeParser = getRawTypeParser(variable)
+
+    switch (variable.isArray, variable.isOptional)
+    {
+    case (false, false): // Item
+        return rawTypeParser
+
+    case (false, true): // Item?
+        return "createOptionalParser(\(rawTypeParser))"
+
+    case (true, false): // [Item]
+        return "createArrayParser(createTracedParser(\(rawTypeParser), createErrorParsingStrategy(key: nil)), \(variable.name)ParsingStrategy)"
+
+    case (true, true): // [Item]?
+        return "createOptionalParser(createArrayParser(createTracedParser(\(rawTypeParser), createErrorParsingStrategy(key: nil)), \(variable.name)ParsingStrategy))"
+    }
+}
+
+%>
+
+<% // <#Parsing Failure Resolver#>
+
+func createParsingFailureResolver(_ variable: Variable, _ eventName: String) -> String
+{
+    let parsingStrategy = variable.annotations[eventName] as! String
+
+    if parsingStrategy == "error"
+    {
+        return ".error"
+    }
+    else if parsingStrategy.contains("default")
+    {
+        return ".defaultValue(\(extractAssociatedValue(parsingStrategy, "default")))"
+    }
+    else if parsingStrategy.contains("customParser")
+    {
+        return ".customParseCallback(\(extractAssociatedValue(parsingStrategy, "customParser")))"
+    }
+
+    fatalError()
+}
+
+func createArrayItemParsingFailureResolver(_ variable: Variable, _ eventName: String) -> String
+{
+    switch variable.annotations[eventName] as! String
+    {
+    case "failWholeArray":
+        return ".failWholeArray"
+
+    case "skipFailed":
+        return ".skipFailed"
+
+    default:
+        fatalError()
+    }
+}
+
+%>
+
+<% // <#Parsing Strategy#>
+
+func createElementParsingStrategy(_ variable: Variable) -> String
+{
+    let key = variable.annotations["key"]!
+
+    return "let \(variable.name)ParsingStrategy: ParsingStrategy<\(variable.typeName.name)> = ParsingStrategy(key: \"\(key)\", onNoKey: \(createParsingFailureResolver(variable, "onNoKey")), onNotParsed: \(createParsingFailureResolver(variable, "onNotParsed")))"
+}
+
+func createArrayParsingStrategy(_ variable: Variable) -> String
+{
+    let key = variable.annotations["key"]!
+
+    return "let \(variable.name)ParsingStrategy: ArrayParsingStrategy<\(variable.typeName.array!.elementTypeName.unwrappedTypeName)> = ArrayParsingStrategy(key: \"\(key)\", onNoKey: \(createParsingFailureResolver(variable, "onNoKey")), onNotParsed: \(createParsingFailureResolver(variable, "onNotParsed")), onItemNotParsed: \(createArrayItemParsingFailureResolver(variable, "onElementNotParsed")))"
+}
+
+func createParsingStrategy(_ variable: Variable) -> String
+{
+    return variable.typeName.isArray
+                ? createArrayParsingStrategy(variable)
+                : createElementParsingStrategy(variable)
+}
+
+%>
+
+<% // <#Traced Parser#>
+
+func createArrayTracedParser(_ variable: Variable) -> String
+{
+    return "let parseTraced\(capitalizeFirstLetter(variable.name)) = createTracedParser(\(createParserComposition(variable)), createParsingStrategy(\(variable.name)ParsingStrategy))"
+}
+
+func createElementTracedParser(_ variable: Variable) -> String
+{
+    return "let parseTraced\(capitalizeFirstLetter(variable.name)) = createTracedParser(\(createParserComposition(variable)), \(variable.name)ParsingStrategy)"
+}
+
+func createTracedParser(_ variable: Variable) -> String
+{
+    return variable.typeName.isArray
+                ? createArrayTracedParser(variable)
+                : createElementTracedParser(variable)
+}
+
+func createParsingStrategyAndTracedParser(_ variable: Variable) -> String
+{
+    let parsingSrategy = createParsingStrategy(variable)
+    let tracedParser = createTracedParser(variable)
+
+    return parsingSrategy + "\n\t" + tracedParser
+}
+
+func createParsingStrategiesAndTracedParsers(_ type: Type) -> String
+{
+    return getSerializableVariables(type).map(createParsingStrategyAndTracedParser).joined(separator: "\n\n\t")
+}
+
+-%>
+
+<% // <#Parse Call#>
+
+func createParseCall(_ variable: Variable) -> String
+{
+    return "let \(variable.name)ParseResult = parseTraced\(capitalizeFirstLetter(variable.name))(json, ParsingTrace.Empty)"
+}
+
+func createParseCalls(_ type: Type) -> String
+{
+    return getSerializableVariables(type).map(createParseCall).joined(separator: "\n\t")
+}
+
+-%>
+
+<% // <#Optional Bindings#>
+
+func createOptionalBindings(_ type: Type) -> String
+{
+    return getSerializableVariables(type)
+            .map { "let \($0.name) = \($0.name)ParseResult.mayBe" }
+            .joined(separator: ", ")
+}
+
+func createConstructorParameters(_ type: Type) -> String
+{
+    return getSerializableVariables(type)
+            .map { "\($0.name): \($0.name)" }
+            .joined(separator: ", ")
+}
+
+func createParsingTraceParameters(_ type: Type) -> String
+{
+    return getSerializableVariables(type)
+            .map { "\($0.name)ParseResult.alwaysIfOne" }
+            .joined(separator: ", ")
+}
+
+%>
+
+<% // <#Validation and Return#>
+
+func createValidation(_ type: Type) -> String
+{
+    return """
+if \(createOptionalBindings(type))
+    {
+        // MARK: Success
+        return Either2(\(type.name)(\(createConstructorParameters(type))))
+    }
+    else
+    {
+        // MARK: Failure
+        return Either2(createParsingTrace(\(createParsingTraceParameters(type))))
+    }
+"""
+}
+
+-%>
+
+<% // <#Parser#>
+
+func createParser(_ type: Type) -> String
+{
+    return """
+// MARK:- \(type.name)
+static func parse\(type.name)(json: JSON) -> Either2<ParsingTrace, \(type.name)>
+{
+    // MARK: Create traced parsers
+    \(createParsingStrategiesAndTracedParsers(type))
+
+    // MARK: Parse
+    \(createParseCalls(type))
+
+    // MARK: Validate
+    \(createValidation(type))
+}
+"""
+}
+
+-%>
+
+<% // <#Parsers#>
+
+func createParsers() -> String
+{
+    //return "//Uncomment me!"
+    //return types.implementing["JsonAutoSerializable"].first!.variables.map{ "\($0.typeName.actualTypeName)" }.joined(separator: "\n\n\n")
+
+    let imports = "import SwiftyJSON"
+    let parsers = types.implementing["JsonAutoSerializable"]
+                    .sorted(by: { $0.name < $1.name })
+                    .map(createParser)
+                    .map(tabulate)
+                    .joined(separator: "\n")
+
+    return "\(imports)\n\nclass JsonParser\n{\n\(parsers)\n}"
+}
+
+-%>

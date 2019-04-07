@@ -1,0 +1,25 @@
+<%- include("Parsing") %>
+<%# include("ParsingChecks") %>
+
+<%
+
+func generateOutput() -> String
+{
+//    if let error = checkAnnotationCorrectness()
+//    {
+//        return error.localizedDescription
+//    }
+//    else
+//    {
+        return createParsers()
+//    }
+}
+
+%>
+
+// sourcery:file:JsonParser.swift
+
+<%= generateOutput() %>
+
+// Sometimes changes are not reflected in the generated .swift file.
+// sourcery:end

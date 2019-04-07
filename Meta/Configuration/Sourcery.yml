@@ -1,0 +1,6 @@
+sources:
+  - ../../Source
+templates:
+  - ../Templates/JsonParser/JsonParser.swifttemplate
+output:
+  ../../Source/Generated

@@ -1,0 +1,9 @@
+<% // <#Serializable Variables#>
+
+func getSerializableVariables(_ type: Type) -> [Variable]
+{
+    return type.variables
+                .filter { !$0.isComputed }
+}
+
+%>

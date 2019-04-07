@@ -1,0 +1,70 @@
+<%
+
+func commaSeparated(_ prefix: String, _ totalNumber: Int) -> String
+{
+    return (0..<totalNumber)
+                .enumerated()
+                .map { "\(prefix)\($0.0)" }
+                .joined(separator: ", ")
+}
+
+func templateDeclaration(_ typeName: String, _ totalNumber: Int) -> String
+{
+    return "<\(commaSeparated(typeName, totalNumber))>"
+}
+
+func typeConstraints(_ typeName: String, _ totalNumber: Int, _ constraintName: String) -> String
+{
+    return (0..<totalNumber)
+                .enumerated()
+                .map { "\(typeName)\($0.0): \(constraintName)" }
+                .joined(separator: ", ")
+}
+
+%>
+
+<%
+
+func capitalizeFirstLetter(_ string: String) -> String
+{
+    return string.prefix(1).uppercased() + string.dropFirst()
+}
+
+func tabulate(string: String) -> String
+{
+    return "\t" + string.replacingOccurrences(of: "\n", with: "\n\t")
+}
+
+%>
+
+<%
+
+func getRawTypeName(_ variable: Variable) -> String
+{
+    let typeName = variable.typeName.isArray
+                        ? variable.typeName.array!.elementTypeName
+                        : variable.typeName
+
+    if let actualTypeName = typeName.actualTypeName
+    {
+        return actualTypeName.unwrappedTypeName
+    }
+    else
+    {
+        return typeName.unwrappedTypeName
+    }
+}
+
+%>
+
+<%
+
+func extractAssociatedValue(_ string: String, _ parameterName: String) -> String
+{
+    let start = string.index(string.startIndex, offsetBy: parameterName.count + 1)
+    let end   = string.index(string.endIndex, offsetBy: -1)
+
+    return string.substring(with: start..<end)
+}
+
+%>
