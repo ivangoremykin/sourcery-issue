@@ -21,7 +21,7 @@ Templates:
 - **ParsingCommon.swifttemplate** contains code used both by **Parsing.swifttemplate** and **ParsingChecks.swifttemplate**
 - **Common.swifttemplate** contains code used by any other template (RealmLocalStorage.swifttemplate, WebServiceTesting.swifttemplate, etc.), specifically both by **Parsing.swifttemplate** and **ParsingChecks.swifttemplate**
 
-Please refer to [issue #745](https://github.com/krzysztofzablocki/Sourcery/issues/745).
+Please refer to [issue #729](https://github.com/krzysztofzablocki/Sourcery/issues/729).
 
 By default the provided sample project can be successfully built.
 
